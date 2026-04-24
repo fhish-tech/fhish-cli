@@ -29,9 +29,13 @@ func (m *Manager) LogFile() string {
 	return filepath.Join(m.HomeDir, "logs", m.Name+".log")
 }
 
-func (m *Manager) Start(command string, args ...string) error {
+func (m *Manager) Start(command string, args []string, env []string) error {
 	_ = os.MkdirAll(filepath.Join(m.HomeDir, "run"), 0755)
 	_ = os.MkdirAll(filepath.Join(m.HomeDir, "logs"), 0755)
+
+	if running, _, _ := m.Status(); running {
+		return fmt.Errorf("%s is already running", m.Name)
+	}
 
 	logFile, err := os.OpenFile(m.LogFile(), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
@@ -41,6 +45,7 @@ func (m *Manager) Start(command string, args ...string) error {
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
+	cmd.Env = append(os.Environ(), env...)
 	
 	if err := cmd.Start(); err != nil {
 		return err
@@ -51,15 +56,19 @@ func (m *Manager) Start(command string, args ...string) error {
 }
 
 func (m *Manager) Stop() error {
-	data, err := os.ReadFile(m.PIDFile())
+	running, pid, err := m.Status()
+	if !running {
+		return fmt.Errorf("%s is not running", m.Name)
+	}
 	if err != nil {
 		return err
 	}
-	pid, _ := strconv.Atoi(string(data))
+
 	process, err := os.FindProcess(pid)
 	if err != nil {
 		return err
 	}
+
 	err = process.Signal(syscall.SIGTERM)
 	if err == nil {
 		_ = os.Remove(m.PIDFile())
@@ -67,20 +76,36 @@ func (m *Manager) Stop() error {
 	return err
 }
 
-func (m *Manager) Status() string {
-	if _, err := os.Stat(m.PIDFile()); os.IsNotExist(err) {
-		return "Stopped"
+func (m *Manager) Status() (bool, int, error) {
+	data, err := os.ReadFile(m.PIDFile())
+	if err != nil {
+		return false, 0, nil
 	}
-	data, _ := os.ReadFile(m.PIDFile())
-	pid, _ := strconv.Atoi(string(data))
+	pid, err := strconv.Atoi(string(data))
+	if err != nil {
+		return false, 0, err
+	}
 	process, err := os.FindProcess(pid)
 	if err != nil {
-		return "Stopped"
+		return false, 0, nil
 	}
 	// Check if process is actually running
 	err = process.Signal(syscall.Signal(0))
 	if err != nil {
-		return "Stopped"
+		return false, 0, nil
 	}
-	return "Running (PID: " + string(data) + ")"
+	return true, pid, nil
+}
+
+func (m *Manager) Log(follow bool, lines int) error {
+	args := []string{"-n", strconv.Itoa(lines)}
+	if follow {
+		args = append(args, "-f")
+	}
+	args = append(args, m.LogFile())
+	
+	cmd := exec.Command("tail", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
