@@ -4,48 +4,59 @@ set -e
 RPC_URL=${L2_RPC_URL:-"http://minievm:8545"}
 PRIVATE_KEY=${DEPLOYER_PRIVATE_KEY:-"0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}
 OUT_FILE=${ADDRESSES_FILE:-"/shared/addresses.json"}
-CHAIN_ID=${EVM_CHAIN_ID:-"1234"}
 
-echo "==> Waiting for MiniEVM RPC at $RPC_URL..."
-until cast block-number --rpc-url "$RPC_URL" 2>/dev/null | grep -q "[0-9]"; do
-  echo "   ...waiting"
-  sleep 3
+echo "==> Waiting for MiniEVM JSON-RPC at $RPC_URL..."
+until curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' "$RPC_URL" | grep -q "result"; do
+  sleep 2
 done
 
-BLOCK=$(cast block-number --rpc-url "$RPC_URL")
-echo "==> MiniEVM is live at block $BLOCK"
+echo "==> MiniEVM JSON-RPC is live, waiting 10s for full readiness..."
+sleep 10
 
-echo "==> Deploying FHE contracts..."
+# Create a robust JS config
+cat <<EOF > hardhat.config.docker.js
+require('@nomicfoundation/hardhat-toolbox');
+module.exports = {
+  solidity: {
+    version: '0.8.24',
+    settings: {
+      optimizer: { enabled: true, runs: 200 },
+      evmVersion: 'cancun'
+    }
+  },
+  networks: {
+    minievm: {
+      url: '$RPC_URL',
+      accounts: ['$PRIVATE_KEY'],
+    },
+  },
+};
+EOF
 
-# Find the deploy script
-DEPLOY_SCRIPT=$(find ./scripts -name "deploy.js" | head -1)
+# Patch the deploy script
+cp scripts/deploy.js scripts/deploy_docker.js
 
-if [ -n "$DEPLOY_SCRIPT" ]; then
-  echo "==> Using hardhat deploy script: $DEPLOY_SCRIPT"
-  # Set up env for hardhat
-  export RPC_URL=$RPC_URL
-  export PRIVATE_KEY=$PRIVATE_KEY
-  
-  # Run hardhat deployment
-  # Note: assuming hardhat is in node_modules
-  npx hardhat run "$DEPLOY_SCRIPT" --network localhost > deploy_output.txt 2>&1
-  cat deploy_output.txt
-  
-  # Extract addresses from output (naive grep for demo)
-  GATEWAY=$(grep "FhishGateway deployed to:" deploy_output.txt | awk '{print $NF}')
-  VOTING=$(grep "PrivateVotingV2 deployed to:" deploy_output.txt | awk '{print $NF}')
-  
-  # If hardhat output is clean, we can do better. For now, we'll write what we found.
+# Patch FhishGateway (needs 2 args: admin, kmsVerifier)
+sed -i 's/const gateway = await FhishGateway.deploy();/const gateway = await FhishGateway.deploy(deployer.address, "0x000000000000000000000000000000000000005e");/g' scripts/deploy_docker.js
+
+# Patch PrivateVotingV2 (needs 1 arg: gateway)
+sed -i 's/const voting = await PrivateVotingV2.deploy(gatewayAddress, aclAddress, executorAddress);/const voting = await PrivateVotingV2.deploy(gatewayAddress);/g' scripts/deploy_docker.js
+
+echo "==> Running patched deployment script..."
+npx hardhat run scripts/deploy_docker.js --network minievm --config hardhat.config.docker.js > deploy_output.txt 2>&1
+cat deploy_output.txt
+
+# Extract addresses
+GATEWAY=$(grep "GATEWAY_ADDRESS=" deploy_output.txt | cut -d'=' -f2)
+VOTING=$(grep "VOTING_ADDRESS=" deploy_output.txt | cut -d'=' -f2)
+
+if [ -n "$GATEWAY" ] && [ -n "$VOTING" ]; then
   echo "{
     \"FhishGateway\": \"$GATEWAY\",
     \"PrivateVotingV2\": \"$VOTING\"
   }" > "$OUT_FILE"
+  echo "==> Successfully deployed and saved addresses."
 else
-  # Fallback to individual deployment if no script
-  echo "==> No deploy script found, skipping automated deployment."
-  echo "{}" > "$OUT_FILE"
+  echo "==> Deployment failed or addresses not found."
+  exit 1
 fi
-
-echo "==> Deployed contracts:"
-cat "$OUT_FILE"
-echo "==> Addresses written to $OUT_FILE"

@@ -1,5 +1,4 @@
 # weave-cli-private/docker/docker-compose.yml
-version: "3.9"
 
 networks:
   fhish:
@@ -33,7 +32,7 @@ services:
       GAS_DENOM: ${GAS_DENOM:-uinit}
       DEPLOYER_ADDRESS: ${DEPLOYER_ADDRESS:-0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266}
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8545"]
+      test: ["CMD", "curl", "-sf", "http://localhost:26657/status"]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -61,8 +60,8 @@ services:
   # 3. FHE Gateway
   gateway:
     build:
-      context: ../../fhish-gateway
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: weave-cli-private/docker/Dockerfile.gateway
     container_name: fhish-gateway
     restart: unless-stopped
     networks: [fhish]
@@ -72,17 +71,17 @@ services:
       deployer:
         condition: service_completed_successfully
     volumes:
-      - gateway-keys:/app/keys
+      - ../../fhish-gateway/keys-shortint:/app/keys-shortint
     environment:
       PORT: 8080
       FHISH_RELAYER_SECRET: ${FHISH_RELAYER_SECRET:-fhish-test-secret}
       RPC_URL: http://minievm:8545
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
-      interval: 5s
-      timeout: 5s
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/ready"]
+      interval: 10s
+      timeout: 10s
       retries: 20
-      start_period: 15s
+      start_period: 120s
 
   # 4. FHE Relayer
   relayer:

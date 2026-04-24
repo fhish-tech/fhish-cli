@@ -1,47 +1,67 @@
 #!/bin/bash
 set -e
 
-CHAIN_ID=${CHAIN_ID:-"fhish-1"}
-EVM_CHAIN_ID=${EVM_CHAIN_ID:-"1234"}
-MONIKER=${MONIKER:-"fhish-node"}
 HOME_DIR=${HOME_DIR:-"/data/minievm"}
 GAS_DENOM=${GAS_DENOM:-"uinit"}
 
-# Only init if not already initialized
-if [ ! -f "$HOME_DIR/config/genesis.json" ]; then
-  echo "==> Initializing MiniEVM node..."
-  minievm init "$MONIKER" --chain-id "$CHAIN_ID" --home "$HOME_DIR"
+# The Cosmos address corresponding to Hardhat's first account (0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266)
+HARDHAT_COSMOS_ADDR="init17w0adeg64ky0daxwd2ugyuneellmjgnxdtmpqz"
 
-  # Patch genesis: set EVM chain ID and high gas limits for FHE
-  jq --arg evm_id "$EVM_CHAIN_ID" --arg denom "$GAS_DENOM" \
-     '.app_state.evm.params.evm_denom = $denom |
-      .app_state.evm.params.allowed_publishers = [] |
-      .consensus_params.block.max_gas = "100000000000"' \
-     "$HOME_DIR/config/genesis.json" > /tmp/genesis_patched.json
-  mv /tmp/genesis_patched.json "$HOME_DIR/config/genesis.json"
+# Force re-init
+rm -rf "$HOME_DIR"/*
+echo "==> Initializing MiniEVM node..."
+minievm init "node" --chain-id "fhish-1" --home "$HOME_DIR"
 
-  # Add a funded genesis account for contract deployer
-  DEPLOYER_ADDR=${DEPLOYER_ADDRESS:-"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"}
-  if [ -n "$DEPLOYER_ADDR" ]; then
-    echo "==> Adding genesis account: $DEPLOYER_ADDR"
-    minievm genesis add-genesis-account "$DEPLOYER_ADDR" "1000000000000$GAS_DENOM" --home "$HOME_DIR"
-  fi
+# Force empty blocks and faster production
+sed -i 's/create_empty_blocks = false/create_empty_blocks = true/g' "$HOME_DIR/config/config.toml"
+sed -i 's/timeout_propose = "3s"/timeout_propose = "1s"/g' "$HOME_DIR/config/config.toml"
+sed -i 's/timeout_commit = "5s"/timeout_commit = "1s"/g' "$HOME_DIR/config/config.toml"
 
-  # Patch app.toml: enable JSON-RPC
-  sed -i 's/enable = false/enable = true/g' "$HOME_DIR/config/app.toml"
-  sed -i 's|address = "127.0.0.1:8545"|address = "0.0.0.0:8545"|g' "$HOME_DIR/config/app.toml"
-  sed -i 's|ws-address = "127.0.0.1:8546"|ws-address = "0.0.0.0:8546"|g' "$HOME_DIR/config/app.toml"
-  sed -i 's/api = "eth,net,web3"/api = "eth,net,web3,personal,txpool,debug"/g' "$HOME_DIR/config/app.toml"
-  sed -i 's/minimum-gas-prices = ""/minimum-gas-prices = "0'"$GAS_DENOM"'"/g' "$HOME_DIR/config/app.toml"
+# Create key for validator
+echo "==> Creating validator key..."
+minievm keys add validator --keyring-backend test --home "$HOME_DIR"
+VAL_ADDR=$(minievm keys show validator -a --keyring-backend test --home "$HOME_DIR")
 
-  # Patch config.toml: allow all RPC connections
-  sed -i 's|laddr = "tcp://127.0.0.1:26657"|laddr = "tcp://0.0.0.0:26657"|g' "$HOME_DIR/config/config.toml"
-  sed -i 's|cors_allowed_origins = \[\]|cors_allowed_origins = ["*"]|g' "$HOME_DIR/config/config.toml"
+# Add Hardhat account and validator to genesis
+echo "==> Adding accounts to genesis..."
+minievm genesis add-genesis-account "$HARDHAT_COSMOS_ADDR" "1000000000000$GAS_DENOM" --home "$HOME_DIR"
+minievm genesis add-genesis-account "$VAL_ADDR" "1000000000000$GAS_DENOM" --home "$HOME_DIR"
 
-  echo "==> MiniEVM node initialized."
-else
-  echo "==> MiniEVM node already initialized, skipping init."
-fi
+# Patch genesis (Python)
+echo "==> Patching genesis..."
+python3 -c "
+import json
+path = '$HOME_DIR/config/genesis.json'
+with open(path, 'r') as f:
+    data = json.load(f)
+data['app_state']['opchild']['params']['bridge_executors'] = ['$HARDHAT_COSMOS_ADDR']
+data['app_state']['opchild']['params']['admin'] = '$HARDHAT_COSMOS_ADDR'
+data['app_state']['evm']['params']['fee_denom'] = '$GAS_DENOM'
+if 'consensus_params' in data:
+    data['consensus_params']['block']['max_gas'] = '100000000000'
+with open(path, 'w') as f:
+    json.dump(data, f)
+"
+
+# Add genesis validator
+echo "==> Adding genesis validator..."
+minievm genesis add-genesis-validator validator --keyring-backend test --home "$HOME_DIR"
 
 echo "==> Starting MiniEVM node..."
-exec minievm start --home "$HOME_DIR"
+minievm start --home "$HOME_DIR" \
+    --rpc.laddr tcp://0.0.0.0:26657 \
+    --json-rpc.address 0.0.0.0:8545 \
+    --json-rpc.enable true \
+    --json-rpc.enable-unsafe-cors true &
+
+# Wait for node to be live
+until curl -s http://localhost:26657/status | grep -q "latest_block_height"; do
+  sleep 2
+done
+
+echo "==> Node is live, initializing Hardhat account..."
+minievm tx bank send "$VAL_ADDR" "$HARDHAT_COSMOS_ADDR" "1$GAS_DENOM" --chain-id "fhish-1" --keyring-backend test --home "$HOME_DIR" --yes --broadcast-mode sync || echo "WARNING: account initialization failed"
+sleep 5
+
+echo "==> MiniEVM ready."
+wait

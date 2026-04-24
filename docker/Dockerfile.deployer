@@ -13,7 +13,7 @@ WORKDIR /contracts
 COPY packages/fhish-contracts-v2/ .
 
 # Install npm deps if needed
-RUN if [ -f "package.json" ]; then npm ci; fi
+RUN if [ -f "package.json" ]; then npm install --no-audit --no-fund --legacy-peer-deps; fi
 
 COPY weave-cli-private/docker/scripts/deploy-contracts.sh /deploy-contracts.sh
 RUN chmod +x /deploy-contracts.sh

@@ -10,12 +10,12 @@ RUN VERSION=$(curl -s https://api.github.com/repos/initia-labs/minievm/releases/
       https://github.com/initia-labs/minievm.git /src/minievm
 
 WORKDIR /src/minievm
-RUN make install
+RUN go build -o /minievm ./cmd/minitiad
 
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y ca-certificates curl jq lz4 && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /root/go/bin/minievm /usr/local/bin/minievm
-COPY docker/scripts/init-minievm.sh /init-minievm.sh
+RUN apt-get update && apt-get install -y ca-certificates curl jq lz4 python3 && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /minievm /usr/local/bin/minievm
+COPY weave-cli-private/docker/scripts/init-minievm.sh /init-minievm.sh
 RUN chmod +x /init-minievm.sh
 
 EXPOSE 26657 26656 1317 8545 8546

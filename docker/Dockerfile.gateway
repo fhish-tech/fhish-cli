@@ -1,0 +1,27 @@
+# weave-cli-private/docker/Dockerfile.gateway
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy WASM package first (it's a dependency)
+COPY packages/fhish-wasm/pkg-node /packages/fhish-wasm/pkg-node
+
+# Copy gateway source
+COPY fhish-gateway/package*.json ./
+RUN npm install --no-audit --no-fund --legacy-peer-deps
+
+COPY fhish-gateway/tsconfig.json ./
+COPY fhish-gateway/src ./src
+COPY fhish-gateway/scripts ./scripts
+
+RUN npm run build || echo "Build step skipped"
+
+FROM node:20-alpine
+WORKDIR /app
+COPY --from=builder /app /app
+COPY --from=builder /packages /packages
+
+# Ensure keys directory exists
+RUN mkdir -p /app/keys
+
+ENTRYPOINT ["npm", "start"]
