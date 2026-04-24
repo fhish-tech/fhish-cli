@@ -1,4 +1,4 @@
-// weave-cli-private/docker/scripts/verify-fhe.mjs
+// fhish-cli/docker/scripts/verify-fhe.mjs
 import { readFileSync } from 'fs';
 import { ethers } from 'ethers';
 

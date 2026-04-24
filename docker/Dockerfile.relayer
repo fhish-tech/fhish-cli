@@ -1,4 +1,4 @@
-# weave-cli-private/docker/Dockerfile.relayer
+# fhish-cli/docker/Dockerfile.relayer
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -14,7 +14,7 @@ FROM node:20-alpine
 RUN apk add --no-cache jq bash
 WORKDIR /app
 COPY --from=builder /app /app
-COPY weave-cli-private/docker/scripts/start-relayer.sh /start-relayer.sh
+COPY fhish-cli/docker/scripts/start-relayer.sh /start-relayer.sh
 RUN chmod +x /start-relayer.sh
 
 ENTRYPOINT ["/start-relayer.sh"]

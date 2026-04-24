@@ -35,6 +35,7 @@ It automates the deployment of rollups, FHE contracts, gateways, and relayers.`,
 		NodeCommand(),
 		DockerCommand(),
 		VersionCommand(),
+		KeysCommand(),
 	)
 
 	return rootCmd.Execute()

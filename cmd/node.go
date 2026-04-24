@@ -7,6 +7,7 @@ import (
 
 	"github.com/fhish/fhish-cli/config"
 	"github.com/fhish/fhish-cli/service"
+	"github.com/fhish/fhish-cli/utils"
 )
 
 func NodeCommand() *cobra.Command {
@@ -39,8 +40,22 @@ func NodeCommand() *cobra.Command {
 			Short: "Check node status",
 			Run: func(cmd *cobra.Command, args []string) {
 				cfg, _ := config.GetActiveChain()
+				
+				// 1. Check local OS process status
 				m := service.NewManager("node", cfg.Home)
-				fmt.Printf("Node status: %s\n", m.Status())
+				procStatus := m.Status()
+				fmt.Printf("Process status: %s\n", procStatus)
+
+				// 2. Check actual RPC connectivity and chain state
+				if cfg.EVMRPC != "" {
+					blockNum, err := utils.GetChainStatus(cfg.EVMRPC)
+					if err != nil {
+						fmt.Printf("RPC Status: Offline (%v)\n", err)
+					} else {
+						fmt.Printf("RPC Status: Online\n")
+						fmt.Printf("Current Block: %d\n", blockNum)
+					}
+				}
 			},
 		},
 	)

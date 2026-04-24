@@ -1,4 +1,4 @@
-# weave-cli-private/docker/Dockerfile.deployer
+# fhish-cli/docker/Dockerfile.deployer
 FROM ghcr.io/foundry-rs/foundry:latest AS foundry
 
 FROM node:20-bookworm-slim
@@ -15,7 +15,7 @@ COPY packages/fhish-contracts-v2/ .
 # Install npm deps if needed
 RUN if [ -f "package.json" ]; then npm install --no-audit --no-fund --legacy-peer-deps; fi
 
-COPY weave-cli-private/docker/scripts/deploy-contracts.sh /deploy-contracts.sh
+COPY fhish-cli/docker/scripts/deploy-contracts.sh /deploy-contracts.sh
 RUN chmod +x /deploy-contracts.sh
 
 ENTRYPOINT ["/deploy-contracts.sh"]

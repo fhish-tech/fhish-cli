@@ -1,4 +1,4 @@
-# weave-cli-private/docker/docker-compose.yml
+# fhish-cli/docker/docker-compose.yml
 
 networks:
   fhish:
@@ -15,7 +15,7 @@ services:
   minievm:
     build:
       context: ../..
-      dockerfile: weave-cli-private/docker/Dockerfile.minievm
+      dockerfile: fhish-cli/docker/Dockerfile.minievm
     container_name: fhish-minievm
     restart: unless-stopped
     networks: [fhish]
@@ -42,7 +42,7 @@ services:
   deployer:
     build:
       context: ../..
-      dockerfile: weave-cli-private/docker/Dockerfile.deployer
+      dockerfile: fhish-cli/docker/Dockerfile.deployer
     container_name: fhish-deployer
     networks: [fhish]
     depends_on:
@@ -61,7 +61,7 @@ services:
   gateway:
     build:
       context: ../..
-      dockerfile: weave-cli-private/docker/Dockerfile.gateway
+      dockerfile: fhish-cli/docker/Dockerfile.gateway
     container_name: fhish-gateway
     restart: unless-stopped
     networks: [fhish]
@@ -87,7 +87,7 @@ services:
   relayer:
     build:
       context: ../..
-      dockerfile: weave-cli-private/docker/Dockerfile.relayer
+      dockerfile: fhish-cli/docker/Dockerfile.relayer
     container_name: fhish-relayer
     restart: unless-stopped
     networks: [fhish]
@@ -109,7 +109,7 @@ services:
   verifier:
     build:
       context: ../..
-      dockerfile: weave-cli-private/docker/Dockerfile.verifier
+      dockerfile: fhish-cli/docker/Dockerfile.verifier
     container_name: fhish-verifier
     networks: [fhish]
     depends_on:
@@ -120,7 +120,7 @@ services:
     volumes:
       - shared-data:/shared
     environment:
-      L2_RPC_URL: http://minievm:8545
+      RPC_URL: http://minievm:8545
       GATEWAY_URL: http://gateway:8080
       ADDRESSES_FILE: /shared/addresses.json
     profiles: ["verify"]

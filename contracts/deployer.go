@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 
 	"github.com/fhish/fhish-cli/utils"
 )
@@ -15,23 +17,47 @@ type ContractAddresses struct {
 }
 
 func DeployContracts(contractsSrc string, rpcURL string, privateKey string) (*ContractAddresses, error) {
-	if !utils.CheckTool("forge") {
-		return nil, fmt.Errorf("foundry (forge) not found. Please install it first")
+	utils.PrintInfo("Deploying FHE Contracts via Hardhat...")
+
+	// Create command to run hardhat deploy script
+	cmd := exec.Command("npx", "hardhat", "run", "scripts/deploy.js", "--network", "sepolia")
+	cmd.Dir = contractsSrc
+
+	// Set environment variables for Hardhat
+	env := os.Environ()
+	env = append(env, "SEPOLIA_RPC_URL="+rpcURL)
+	env = append(env, "PRIVATE_KEY="+privateKey)
+	cmd.Env = env
+
+	// Execute command
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("hardhat deploy failed: %v\nOutput: %s", err, string(output))
 	}
 
-	utils.PrintInfo("Deploying FHE Gateway...")
-	// forge create contracts/gateway/FhishGateway.sol:FhishGateway --rpc-url <rpcURL> --private-key <pk> --json
-	// This is a placeholder for the actual forge command execution and parsing
-	gatewayAddr := "0x5FbDB2315678afecb367f032d93F642f64180aa3" 
+	outStr := string(output)
+	
+	// Parse addresses from output
+	addrs := &ContractAddresses{}
+	
+	// Example output: GATEWAY_ADDRESS=0x...
+	gatewayRe := regexp.MustCompile(`GATEWAY_ADDRESS=(0x[a-fA-F0-9]{40})`)
+	votingRe := regexp.MustCompile(`VOTING_ADDRESS=(0x[a-fA-F0-9]{40})`)
 
-	utils.PrintInfo("Deploying PrivateVotingV2...")
-	// forge create contracts/PrivateVotingV2.sol:PrivateVotingV2 --rpc-url <rpcURL> --private-key <pk> --json --constructor-args <gatewayAddr> ...
-	votingAddr := "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
-
-	addrs := &ContractAddresses{
-		Gateway:       gatewayAddr,
-		PrivateVoting: votingAddr,
+	if match := gatewayRe.FindStringSubmatch(outStr); len(match) > 1 {
+		addrs.Gateway = match[1]
+	} else {
+		return nil, fmt.Errorf("failed to find GATEWAY_ADDRESS in deploy output")
 	}
+
+	if match := votingRe.FindStringSubmatch(outStr); len(match) > 1 {
+		addrs.PrivateVoting = match[1]
+	} else {
+		return nil, fmt.Errorf("failed to find VOTING_ADDRESS in deploy output")
+	}
+
+	utils.PrintSuccess(fmt.Sprintf("Deployed Gateway: %s", addrs.Gateway))
+	utils.PrintSuccess(fmt.Sprintf("Deployed Voting: %s", addrs.PrivateVoting))
 
 	return addrs, nil
 }
