@@ -1,0 +1,23 @@
+# weave-cli-private/docker/Dockerfile.minievm
+FROM golang:1.23-bookworm AS builder
+
+RUN apt-get update && apt-get install -y git make lz4 curl jq
+
+# Get latest minievm tag and build
+RUN VERSION=$(curl -s https://api.github.com/repos/initia-labs/minievm/releases/latest \
+      | grep '"tag_name"' | cut -d'"' -f4) && \
+    git clone --depth 1 --branch $VERSION \
+      https://github.com/initia-labs/minievm.git /src/minievm
+
+WORKDIR /src/minievm
+RUN make install
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y ca-certificates curl jq lz4 && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /root/go/bin/minievm /usr/local/bin/minievm
+COPY docker/scripts/init-minievm.sh /init-minievm.sh
+RUN chmod +x /init-minievm.sh
+
+EXPOSE 26657 26656 1317 8545 8546
+
+ENTRYPOINT ["/init-minievm.sh"]

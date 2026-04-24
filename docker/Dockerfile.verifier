@@ -1,0 +1,12 @@
+# weave-cli-private/docker/Dockerfile.verifier
+FROM node:20-alpine
+RUN apk add --no-cache curl jq
+
+WORKDIR /verify
+# Copy SDK and gateway WASM
+COPY packages/fhish-sdk-v2/ ./sdk/
+COPY weave-cli-private/docker/scripts/verify-fhe.mjs ./verify-fhe.mjs
+
+RUN cd sdk && npm ci --omit=dev || echo "SDK install skipped"
+
+ENTRYPOINT ["node", "/verify/verify-fhe.mjs"]

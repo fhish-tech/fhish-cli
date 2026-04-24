@@ -1,0 +1,20 @@
+# weave-cli-private/docker/Dockerfile.relayer
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+# Copy from workspace context
+COPY packages/fhish-relayer-v2/package*.json ./
+RUN npm ci
+
+COPY packages/fhish-relayer-v2/ ./
+# Build if TypeScript
+RUN if [ -f "tsconfig.json" ]; then npx tsc; fi
+
+FROM node:20-alpine
+RUN apk add --no-cache jq
+WORKDIR /app
+COPY --from=builder /app /app
+COPY weave-cli-private/docker/scripts/start-relayer.sh /start-relayer.sh
+RUN chmod +x /start-relayer.sh
+
+ENTRYPOINT ["/start-relayer.sh"]

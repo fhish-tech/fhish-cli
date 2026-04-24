@@ -1,0 +1,128 @@
+# weave-cli-private/docker/docker-compose.yml
+version: "3.9"
+
+networks:
+  fhish:
+    driver: bridge
+
+volumes:
+  minievm-data:
+  shared-data:
+  gateway-keys:
+
+services:
+
+  # 1. MiniEVM Node
+  minievm:
+    build:
+      context: ../..
+      dockerfile: weave-cli-private/docker/Dockerfile.minievm
+    container_name: fhish-minievm
+    restart: unless-stopped
+    networks: [fhish]
+    ports:
+      - "26657:26657"
+      - "8545:8545"
+      - "8546:8546"
+    volumes:
+      - minievm-data:/data/minievm
+    environment:
+      CHAIN_ID: ${CHAIN_ID:-fhish-1}
+      EVM_CHAIN_ID: ${EVM_CHAIN_ID:-1234}
+      MONIKER: ${MONIKER:-fhish-node}
+      GAS_DENOM: ${GAS_DENOM:-uinit}
+      DEPLOYER_ADDRESS: ${DEPLOYER_ADDRESS:-0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266}
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8545"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  # 2. Contract Deployer
+  deployer:
+    build:
+      context: ../..
+      dockerfile: weave-cli-private/docker/Dockerfile.deployer
+    container_name: fhish-deployer
+    networks: [fhish]
+    depends_on:
+      minievm:
+        condition: service_healthy
+    volumes:
+      - shared-data:/shared
+    environment:
+      L2_RPC_URL: http://minievm:8545
+      EVM_CHAIN_ID: ${EVM_CHAIN_ID:-1234}
+      DEPLOYER_PRIVATE_KEY: ${DEPLOYER_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}
+      ADDRESSES_FILE: /shared/addresses.json
+    restart: "no"
+
+  # 3. FHE Gateway
+  gateway:
+    build:
+      context: ../../fhish-gateway
+      dockerfile: Dockerfile
+    container_name: fhish-gateway
+    restart: unless-stopped
+    networks: [fhish]
+    ports:
+      - "3000:8080"
+    depends_on:
+      deployer:
+        condition: service_completed_successfully
+    volumes:
+      - gateway-keys:/app/keys
+    environment:
+      PORT: 8080
+      FHISH_RELAYER_SECRET: ${FHISH_RELAYER_SECRET:-fhish-test-secret}
+      RPC_URL: http://minievm:8545
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+  # 4. FHE Relayer
+  relayer:
+    build:
+      context: ../..
+      dockerfile: weave-cli-private/docker/Dockerfile.relayer
+    container_name: fhish-relayer
+    restart: unless-stopped
+    networks: [fhish]
+    depends_on:
+      deployer:
+        condition: service_completed_successfully
+      gateway:
+        condition: service_healthy
+    volumes:
+      - shared-data:/shared
+    environment:
+      ADDRESSES_FILE: /shared/addresses.json
+      RPC_URL: http://minievm:8545
+      GATEWAY_URL: http://gateway:8080
+      PRIVATE_KEY: ${DEPLOYER_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}
+      FHISH_RELAYER_SECRET: ${FHISH_RELAYER_SECRET:-fhish-test-secret}
+
+  # 5. FHE Verifier
+  verifier:
+    build:
+      context: ../..
+      dockerfile: weave-cli-private/docker/Dockerfile.verifier
+    container_name: fhish-verifier
+    networks: [fhish]
+    depends_on:
+      relayer:
+        condition: service_started
+      gateway:
+        condition: service_healthy
+    volumes:
+      - shared-data:/shared
+    environment:
+      L2_RPC_URL: http://minievm:8545
+      GATEWAY_URL: http://gateway:8080
+      ADDRESSES_FILE: /shared/addresses.json
+    profiles: ["verify"]
+    restart: "no"

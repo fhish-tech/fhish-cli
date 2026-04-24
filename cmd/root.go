@@ -33,6 +33,7 @@ It automates the deployment of rollups, FHE contracts, gateways, and relayers.`,
 		RelayerCommand(),
 		GatewayCommand(),
 		NodeCommand(),
+		DockerCommand(),
 		VersionCommand(),
 	)
 
