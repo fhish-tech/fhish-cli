@@ -141,63 +141,14 @@ services:
     restart: "no"
 
   # 7. Blockscout Explorer (Optional)
-  explorer-db:
-    image: postgres:15-alpine
-    container_name: fhish-explorer-db
-    restart: always
-    environment:
-      POSTGRES_PASSWORD: fhish_explorer_pass
-      POSTGRES_USER: fhish_explorer_user
-      POSTGRES_DB: fhish_explorer_db
-    command: postgres -c 'max_connections=200'
-    networks: [fhish]
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fhish_explorer_user -d fhish_explorer_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    profiles: ["explorer"]
-
-  explorer-redis:
-    image: redis:alpine
-    container_name: fhish-explorer-redis
-    networks: [fhish]
-    profiles: ["explorer"]
-
   explorer:
-    image: blockscout/blockscout:6.9.0
+    build:
+      context: ./explorer
     container_name: fhish-explorer
     restart: always
-    user: root
-    command: ["/bin/sh", "-c", "bin/blockscout eval Explorer.ReleaseTasks.create_and_migrate && bin/blockscout start"]
-    depends_on:
-      explorer-db:
-        condition: service_healthy
-      explorer-redis:
-        condition: service_started
     networks: [fhish]
     ports:
       - "4000:4000"
     environment:
-      - PORT=4000
-      - NETWORK=FHISH
-      - SUBNETWORK=Rollup-1
-      - COIN=INIT
-      - ETHEREUM_JSON_RPC_VARIANT=geth
-      - ETHEREUM_JSON_RPC_HTTP_URL=http://minievm:8545
-      - DATABASE_URL=postgresql://fhish_explorer_user:fhish_explorer_pass@explorer-db:5432/fhish_explorer_db?ssl=false
-      - ECTO_USE_SSL=false
-      - SECRET_KEY_BASE=567b4c781d06b952c9d73b000ef26767fd620593f61c6a012011a660199bf50531bd0175d4090ca21460337c57097211a76f010454707351911fa27237ee0644
-      - REDIS_URL=redis://explorer-redis:6379/0
-      - INDEXER_OPTIMIZATION_CONCURRENT_REQUESTS=10
-      - MICROSERVICES_SC_VERIFIER_ENABLED=false
-      - CHAIN_ID=1261826453
-      - SHOW_PRICE_CHART=false
-      - LOG_LEVEL=info
-      - CHECK_ORIGIN=false
-      - FRONTEND_URL=http://161.35.63.119:4000
-      - API_URL=http://161.35.63.119:4000
-      - BLOCKSCOUT_HOST=161.35.63.119:4000
-      - BLOCKSCOUT_PROTOCOL=http
-      - BLOCK_TRANSFORMER=base
+      - NEXT_PUBLIC_RPC_URL=http://minievm:8545
     profiles: ["explorer"]
