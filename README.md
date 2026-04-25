@@ -38,27 +38,36 @@ sudo mv fhish /usr/local/bin/
 
 1. **Check Installation**:
    ```bash
-   fhish help
+   fhish version
    ```
 
-2. **Initialize a Node**:
+2. **Get the Configuration**:
+   The CLI uses Docker to orchestrate the FHE stack. Clone the repository to get the necessary configuration files:
    ```bash
-   fhish node init --chain-id fhish-1
+   git clone https://github.com/fhish-tech/fhish-cli.git
+   cd fhish-cli
    ```
 
-3. **Start the Stack**:
+3. **Start the Fhish Stack**:
+   Launch the MiniEVM node, FHE Gateway, and Relayer:
    ```bash
-   # Launch MiniEVM, Gateway, and Relayer via Docker
    fhish docker up
+   ```
+
+4. **Verify the Environment**:
+   Run the FHE end-to-end smoke test to ensure the protocol is working correctly:
+   ```bash
+   fhish docker verify
    ```
 
 ## Commands
 
-- `fhish create`: Wizard to create new rollups or services.
-- `fhish node`: Start/Stop/Status of the local MiniEVM node.
-- `fhish gateway`: Manage the FHE decryption gateway.
-- `fhish relayer`: Manage the FHE relayer service.
+- `fhish docker`: Orchestrate the full stack (up, down, logs, verify).
+- `fhish node`: Manage the local MiniEVM node (init, start, stop).
 - `fhish keys`: Generate FHE evaluation and client keys.
+- `fhish gateway`: Manage the FHE decryption gateway service.
+- `fhish relayer`: Manage the FHE relayer service.
+- `fhish create`: Wizard to create new rollups or services.
 - `fhish version`: Show current version (v0.1.7).
 
 ## Documentation
