@@ -2,34 +2,27 @@
 
 The `fhish-cli` is the command-line orchestrator for the Fhish Private FHE Rollup Stack. It is a Go-based tool (originally forked from Initia's `weave-cli`) designed to streamline the provisioning, deployment, and management of privacy-preserving smart contract rollups on Initia.
 
-## Architecture
-
-The CLI wraps the entire stack and provides native management capabilities:
-
-1. **MiniEVM Node Management**: Native commands to initialize, build, and run the Cosmos/EVM hybrid node locally without Docker if needed (`fhish node start`).
-2. **Contract Deployer**: Uses `os/exec` to securely invoke Hardhat deployment scripts (`deploy.js`), parsing the outputs to dynamically capture the deployed Gateway and PrivateVoting contract addresses.
-3. **FHE Key Generation**: The `fhish keys generate-fhe` command dynamically invokes the underlying `fhish-wasm` Rust binaries to generate the required Shortint Server/Client keypairs on the fly.
-4. **Docker Orchestration**: The `fhish docker` subcommands provide wrappers around `docker-compose`## Installation
+## Installation (v0.1.8)
 
 The Fhish CLI is distributed as a native binary for maximum performance.
 
 ### macOS (Silicon/M1/M2/M3)
 ```bash
-curl -L -o fhish https://github.com/fhish-tech/fhish-cli/releases/download/v0.1.7/fhish-darwin-arm64
+curl -L -o fhish https://github.com/fhish-tech/fhish-cli/releases/download/v0.1.8/fhish-darwin-arm64
 chmod +x fhish
 sudo mv fhish /usr/local/bin/
 ```
 
 ### macOS (Intel)
 ```bash
-curl -L -o fhish https://github.com/fhish-tech/fhish-cli/releases/download/v0.1.7/fhish-darwin-amd64
+curl -L -o fhish https://github.com/fhish-tech/fhish-cli/releases/download/v0.1.8/fhish-darwin-amd64
 chmod +x fhish
 sudo mv fhish /usr/local/bin/
 ```
 
 ### Linux (AMD64)
 ```bash
-curl -L -o fhish https://github.com/fhish-tech/fhish-cli/releases/download/v0.1.7/fhish-linux-amd64
+curl -L -o fhish https://github.com/fhish-tech/fhish-cli/releases/download/v0.1.8/fhish-linux-amd64
 chmod +x fhish
 sudo mv fhish /usr/local/bin/
 ```
@@ -41,34 +34,38 @@ sudo mv fhish /usr/local/bin/
    fhish version
    ```
 
-2. **Get the Configuration**:
-   The CLI uses Docker to orchestrate the FHE stack. Clone the repository to get the necessary configuration files:
+2. **Launch the Setup Wizard**:
+   The CLI provides an interactive TUI to set up your entire FHE stack. It handles EVM Chain ID calculation and FHE key generation automatically.
    ```bash
-   git clone https://github.com/fhish-tech/fhish-cli.git
-   cd fhish-cli
+   fhish create all
    ```
 
 3. **Start the Fhish Stack**:
-   Launch the MiniEVM node, FHE Gateway, and Relayer:
+   If you have an existing configuration, you can start the services via Docker:
    ```bash
    fhish docker up
    ```
 
 4. **Verify the Environment**:
-   Run the FHE end-to-end smoke test to ensure the protocol is working correctly:
+   Run the FHE end-to-end smoke test:
    ```bash
    fhish docker verify
    ```
 
+## Key Features
+
+- **Interactive TUI**: Bubbletea-powered wizard for easy setup.
+- **Auto EVM Derivation**: Calculates deterministic EVM Chain IDs based on rollup names.
+- **FHE Key Generation**: Integrated Rust-based key generator for SHORTINT FHE parameters.
+- **Smart Docker Orchestration**: Automatically handles local source code detection and fallbacks.
+
 ## Commands
 
+- `fhish create all`: Interactive wizard for full stack setup.
 - `fhish docker`: Orchestrate the full stack (up, down, logs, verify).
 - `fhish node`: Manage the local MiniEVM node (init, start, stop).
 - `fhish keys`: Generate FHE evaluation and client keys.
-- `fhish gateway`: Manage the FHE decryption gateway service.
-- `fhish relayer`: Manage the FHE relayer service.
-- `fhish create`: Wizard to create new rollups or services.
-- `fhish version`: Show current version (v0.1.7).
+- `fhish version`: Show current version (v0.1.8).
 
 ## Documentation
 
