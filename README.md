@@ -16,3 +16,21 @@ The CLI wraps the entire stack and provides native management capabilities:
 - `fhish docker up`: Launch the containerized verification stack.
 - `fhish keys generate-fhe`: Generate FHE evaluation and client keys.
 - `fhish node status`: Check the block height and RPC connectivity natively.
+
+## Installation
+
+Download the latest binary for your OS from the [GitHub Releases](https://github.com/fhish-tech/fhish/releases).
+
+### For macOS (Silicon)
+```bash
+curl -L -o fhish https://github.com/fhish-tech/fhish/releases/latest/download/fhish-darwin-arm64
+chmod +x fhish
+sudo mv fhish /usr/local/bin/
+```
+
+### From Source
+```bash
+git clone https://github.com/fhish-tech/fhish.git
+cd fhish-cli
+make build
+```
