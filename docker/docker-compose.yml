@@ -166,7 +166,7 @@ services:
     profiles: ["explorer"]
 
   explorer:
-    image: blockscout/blockscout:latest
+    image: blockscout/blockscout:6.9.0
     container_name: fhish-explorer
     restart: always
     depends_on:
@@ -185,6 +185,7 @@ services:
       - ETHEREUM_JSON_RPC_VARIANT=geth
       - ETHEREUM_JSON_RPC_HTTP_URL=http://minievm:8545
       - DATABASE_URL=postgresql://fhish_explorer_user:fhish_explorer_pass@explorer-db:5432/fhish_explorer_db?ssl=false
+      - ECTO_USE_SSL=false
       - REDIS_URL=redis://explorer-redis:6379/0
       - INDEXER_DISABLE_PENDING_TRANSACTIONS_FETCHER=true
       - INDEXER_DISABLE_REWARD_POST_PROCESSOR=true
@@ -193,5 +194,5 @@ services:
       - MICROSERVICES_SC_VERIFIER_ENABLED=false
       - CHAIN_ID=1261826453
       - SHOW_PRICE_CHART=false
-      - LOG_LEVEL=error
+      - LOG_LEVEL=info
     profiles: ["explorer"]
