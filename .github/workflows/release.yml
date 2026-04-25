@@ -21,6 +21,7 @@ jobs:
 
       - name: Build binaries
         run: |
+          go mod tidy
           mkdir -p dist
           # Build for macOS (Silicon)
           GOOS=darwin GOARCH=arm64 go build -o dist/fhish-darwin-arm64 ./main.go
