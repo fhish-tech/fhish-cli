@@ -11,11 +11,8 @@ COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/anvil
 
 WORKDIR /contracts
 
-# Try to use local Contracts, fallback to clone
-COPY src/fhish-contracts-v2 .
-RUN if [ ! -f foundry.toml ]; then \
-    git clone https://github.com/fhish-tech/fhish-contracts-v2.git . ; \
-    fi
+WORKDIR /contracts
+RUN git clone https://github.com/fhish-tech/fhish-contracts-v2.git .
 
 # Install npm deps if needed
 RUN if [ -f "package.json" ]; then npm install --no-audit --no-fund --legacy-peer-deps; fi

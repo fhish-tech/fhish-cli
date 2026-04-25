@@ -4,12 +4,8 @@ WORKDIR /app
 
 RUN apk add --no-cache git
 
-# Try to use local WASM, fallback to clone
-COPY src/fhish-wasm /packages/fhish-wasm
-RUN if [ ! -f /packages/fhish-wasm/package.json ]; then \
-    rm -rf /packages/fhish-wasm && \
-    git clone https://github.com/fhish-tech/fhish-wasm.git /packages/fhish-wasm; \
-    fi
+# Clone wasm
+RUN git clone https://github.com/fhish-tech/fhish-wasm.git /packages/fhish-wasm
 
 # Install ethers and node-fetch (if needed)
 RUN npm init -y && \
