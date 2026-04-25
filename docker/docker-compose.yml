@@ -194,4 +194,8 @@ services:
       - CHAIN_ID=1261826453
       - SHOW_PRICE_CHART=false
       - LOG_LEVEL=info
+      - CHECK_ORIGIN=false
+      - FRONTEND_URL=http://161.35.63.119:4000
+      - API_URL=http://161.35.63.119:4000
+      - BLOCK_TRANSFORMER=base
     profiles: ["explorer"]
