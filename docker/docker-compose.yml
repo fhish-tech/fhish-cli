@@ -197,5 +197,7 @@ services:
       - CHECK_ORIGIN=false
       - FRONTEND_URL=http://161.35.63.119:4000
       - API_URL=http://161.35.63.119:4000
+      - BLOCKSCOUT_HOST=161.35.63.119:4000
+      - BLOCKSCOUT_PROTOCOL=http
       - BLOCK_TRANSFORMER=base
     profiles: ["explorer"]
