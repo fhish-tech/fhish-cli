@@ -47,9 +47,15 @@ with open(path, 'w') as f:
 echo "==> Adding genesis validator..."
 minievm genesis add-genesis-validator validator --keyring-backend test --home "$HOME_DIR"
 
+# Enable CORS for RPC and API
+sed -i 's/cors_allowed_origins = \[\]/cors_allowed_origins = ["*"]/g' "$HOME_DIR/config/config.toml"
+sed -i 's/enabled-unsafe-cors = false/enabled-unsafe-cors = true/g' "$HOME_DIR/config/app.toml"
+
 echo "==> Starting MiniEVM node..."
 minievm start --home "$HOME_DIR" \
     --rpc.laddr tcp://0.0.0.0:26657 \
+    --api.enable true \
+    --api.enabled-unsafe-cors true \
     --json-rpc.address 0.0.0.0:8545 \
     --json-rpc.enable true \
     --json-rpc.enable-unsafe-cors true &
