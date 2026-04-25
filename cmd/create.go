@@ -67,11 +67,39 @@ func createAll() error {
 	// 3. Prepare Environment
 	utils.PrintStep(1, 4, "Preparing deployment environment...")
 	
-	// Clone the CLI repo to get the Docker files if they don't exist
+	// Copy or clone configuration and source
+	_ = os.MkdirAll(filepath.Join(setupDir, "src"), 0755)
+
+	// If we are running locally in the dev repo, copy the source to setupDir for faster builds
+	cwd, _ := os.Getwd()
+	parentDir := filepath.Dir(cwd)
+	
+	repos := map[string]string{
+		"fhish-gateway":      filepath.Join(parentDir, "fhish-gateway"),
+		"fhish-relayer-v2":   filepath.Join(parentDir, "packages", "fhish-relayer-v2"),
+		"fhish-contracts-v2": filepath.Join(parentDir, "packages", "fhish-contracts-v2"),
+		"fhish-wasm":         filepath.Join(parentDir, "packages", "fhish-wasm"),
+	}
+
+	for name, path := range repos {
+		if _, err := os.Stat(path); err == nil {
+			utils.PrintInfo(fmt.Sprintf("Copying local %s (excluding dependencies)...", name))
+			// Use rsync to exclude node_modules if available, fallback to cp
+			if utils.CheckTool("rsync") {
+				_ = utils.RunCommand("rsync", []string{"-a", "--exclude", "node_modules", "--exclude", "dist", "--exclude", ".git", path + "/", filepath.Join(setupDir, "src", name)}, "")
+			} else {
+				_ = utils.RunCommand("cp", []string{"-r", path, filepath.Join(setupDir, "src", name)}, "")
+			}
+		}
+	}
+
+	// Always ensure we have the docker folder from the CLI
 	if _, err := os.Stat(filepath.Join(setupDir, "docker")); os.IsNotExist(err) {
-		utils.PrintInfo("Downloading stack configuration...")
-		err = utils.RunCommand("git", []string{"clone", "https://github.com/fhish-tech/fhish-cli.git", "temp-cli"}, setupDir)
-		if err == nil {
+		if _, err := os.Stat(filepath.Join(cwd, "docker")); err == nil {
+			_ = utils.RunCommand("cp", []string{"-r", filepath.Join(cwd, "docker"), filepath.Join(setupDir, "docker")}, "")
+		} else {
+			utils.PrintInfo("Downloading stack configuration...")
+			_ = utils.RunCommand("git", []string{"clone", "https://github.com/fhish-tech/fhish-cli.git", "temp-cli"}, setupDir)
 			_ = os.Rename(filepath.Join(setupDir, "temp-cli", "docker"), filepath.Join(setupDir, "docker"))
 			_ = os.RemoveAll(filepath.Join(setupDir, "temp-cli"))
 		}

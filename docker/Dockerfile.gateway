@@ -2,25 +2,30 @@
 FROM node:20-alpine AS builder
 
 WORKDIR /app
+RUN apk add --no-cache git
 
-RUN apt-get update && apt-get install -y git
+# Try to use local WASM, fallback to clone
+COPY src/fhish-wasm /packages/fhish-wasm
+RUN if [ ! -f /packages/fhish-wasm/package.json ]; then \
+    rm -rf /packages/fhish-wasm && \
+    git clone https://github.com/fhish-tech/fhish-wasm.git /packages/fhish-wasm; \
+    fi
 
-# Clone dependencies
-RUN git clone https://github.com/fhish-tech/fhish-wasm.git /packages/fhish-wasm && \
-    git clone https://github.com/fhish-tech/fhish-gateway.git /app-src
+# Try to use local Gateway, fallback to clone
+COPY src/fhish-gateway .
+RUN if [ ! -f package.json ]; then \
+    git clone https://github.com/fhish-tech/fhish-gateway.git . ; \
+    fi
 
-# Copy gateway source from cloned repo
-WORKDIR /app
-RUN cp -r /app-src/* ./ && \
-    npm install --no-audit --no-fund --legacy-peer-deps && \
+RUN npm install --no-audit --no-fund --legacy-peer-deps && \
     npm run build || echo "Build step skipped"
 
 FROM node:20-alpine
 WORKDIR /app
-COPY --from=builder /app /app
+COPY --from=builder /app ./
 COPY --from=builder /packages /packages
 
-# Ensure keys directory exists
-RUN mkdir -p /app/keys
+# Ensure keys directories exist
+RUN mkdir -p /app/keys /app/keys-shortint
 
 ENTRYPOINT ["npm", "start"]

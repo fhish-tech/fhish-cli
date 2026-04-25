@@ -2,20 +2,21 @@
 FROM node:20-alpine AS builder
 
 RUN apk add --no-cache git
-
-# Clone relayer
-RUN git clone https://github.com/fhish-tech/fhish-relayer-v2.git /app-src
-
-# Copy source
 WORKDIR /app
-RUN cp -r /app-src/* ./ && \
-    npm install --no-audit --no-fund --legacy-peer-deps && \
+
+# Try to use local Relayer, fallback to clone
+COPY src/fhish-relayer-v2 .
+RUN if [ ! -f package.json ]; then \
+    git clone https://github.com/fhish-tech/fhish-relayer-v2.git . ; \
+    fi
+
+RUN npm install --no-audit --no-fund --legacy-peer-deps && \
     if [ -f "tsconfig.json" ]; then npx tsc; fi
 
 FROM node:20-alpine
 RUN apk add --no-cache jq bash
 WORKDIR /app
-COPY --from=builder /app /app
+COPY --from=builder /app ./
 COPY docker/scripts/start-relayer.sh /start-relayer.sh
 RUN chmod +x /start-relayer.sh
 
