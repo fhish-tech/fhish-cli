@@ -92,11 +92,10 @@ services:
       FHISH_RELAYER_SECRET: ${FHISH_RELAYER_SECRET:-fhish-test-secret}
       RPC_URL: http://minievm:8545
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/ready"]
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1"]
       interval: 10s
-      timeout: 10s
-      retries: 20
-      start_period: 120s
+      timeout: 5s
+      retries: 5
 
   # 5. FHE Relayer
   relayer:
@@ -169,6 +168,7 @@ services:
     image: blockscout/blockscout:6.9.0
     container_name: fhish-explorer
     restart: always
+    command: ["/bin/sh", "-c", "bin/blockscout start"]
     depends_on:
       explorer-db:
         condition: service_healthy
