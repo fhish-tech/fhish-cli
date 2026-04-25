@@ -1,8 +1,6 @@
 package models
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -22,39 +20,39 @@ const (
 type CreateMiniEVMModel struct {
 	step    Step
 	history []Step
-	inputs  map[Step]textinput.Model
+	inputs  map[Step]*textinput.Model
 	err     error
 	Done    bool
 }
 
 func NewCreateMiniEVMModel() CreateMiniEVMModel {
-	inputs := make(map[Step]textinput.Model)
+	inputs := make(map[Step]*textinput.Model)
 	
-	t := textinput.New()
-	t.Placeholder = "Chain ID (fhish-1)"
-	t.SetValue("fhish-1")
-	t.Focus()
-	inputs[StepChainID] = t
+	t1 := textinput.New()
+	t1.Placeholder = "Chain ID (fhish-1)"
+	t1.SetValue("fhish-1")
+	t1.Focus()
+	inputs[StepChainID] = &t1
 
-	t = textinput.New()
-	t.Placeholder = "EVM Chain ID (1234)"
-	t.SetValue("1234")
-	inputs[StepEVMChainID] = t
+	t2 := textinput.New()
+	t2.Placeholder = "EVM Chain ID (1234)"
+	t2.SetValue("1234")
+	inputs[StepEVMChainID] = &t2
 
-	t = textinput.New()
-	t.Placeholder = "Moniker (fhish-node)"
-	t.SetValue("fhish-node")
-	inputs[StepMoniker] = t
+	t3 := textinput.New()
+	t3.Placeholder = "Moniker (fhish-node)"
+	t3.SetValue("fhish-node")
+	inputs[StepMoniker] = &t3
 
-	t = textinput.New()
-	t.Placeholder = "Gas Denom (uinit)"
-	t.SetValue("uinit")
-	inputs[StepGasDenom] = t
+	t4 := textinput.New()
+	t4.Placeholder = "Gas Denom (uinit)"
+	t4.SetValue("uinit")
+	inputs[StepGasDenom] = &t4
 
-	t = textinput.New()
-	t.Placeholder = "L1 RPC (https://rpc.testnet.initia.xyz)"
-	t.SetValue("https://rpc.testnet.initia.xyz")
-	inputs[StepL1RPC] = t
+	t5 := textinput.New()
+	t5.Placeholder = "L1 RPC (https://rpc.testnet.initia.xyz)"
+	t5.SetValue("https://rpc.testnet.initia.xyz")
+	inputs[StepL1RPC] = &t5
 
 	return CreateMiniEVMModel{
 		step:    StepChainID,
@@ -96,8 +94,9 @@ func (m CreateMiniEVMModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if m.step <= StepL1RPC {
 		var cmd tea.Cmd
-		input := m.inputs[m.step]
-		m.inputs[m.step], cmd = input.Update(msg)
+		input := *m.inputs[m.step]
+		newModel, cmd := input.Update(msg)
+		*m.inputs[m.step] = newModel
 		return m, cmd
 	}
 

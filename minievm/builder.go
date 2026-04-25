@@ -38,7 +38,7 @@ func Build(targetDir string) error {
 	if _, err := os.Stat(srcDir); os.IsNotExist(err) {
 		utils.PrintInfo(fmt.Sprintf("Cloning MiniEVM (%s)...", tag))
 		_ = os.MkdirAll(filepath.Dir(srcDir), 0755)
-		err := utils.RunCommand("git", "clone", repoURL, srcDir, "--depth", 1, "--branch", tag)
+		err := utils.RunCommand("git", "clone", repoURL, srcDir, "--depth", "1", "--branch", tag)
 		if err != nil {
 			return err
 		}
