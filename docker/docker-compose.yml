@@ -169,7 +169,7 @@ services:
     container_name: fhish-explorer
     restart: always
     user: root
-    command: ["/bin/sh", "-c", "bin/blockscout db migrate && bin/blockscout start"]
+    command: ["/bin/sh", "-c", "bin/blockscout eval Explorer.ReleaseTasks.create_and_migrate && bin/blockscout start"]
     depends_on:
       explorer-db:
         condition: service_healthy
