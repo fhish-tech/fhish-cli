@@ -11,10 +11,14 @@ import (
 )
 
 func dockerComposeFile() string {
+	home, _ := os.UserHomeDir()
 	candidates := []string{
 		"docker/docker-compose.yml",
-		filepath.Join(os.Getenv("HOME"), ".fhish", "docker-compose.yml"),
+		filepath.Join(home, ".fhish", "rollups", "fhish-1", "docker", "docker-compose.yml"),
+		filepath.Join(home, ".fhish", "docker-compose.yml"),
 	}
+	
+	// Also check relative to binary if possible
 	_, src, _, _ := runtime.Caller(0)
 	candidates = append(candidates, filepath.Join(filepath.Dir(src), "../docker/docker-compose.yml"))
 	
@@ -23,7 +27,10 @@ func dockerComposeFile() string {
 			return c
 		}
 	}
-	return "docker/docker-compose.yml"
+	
+	// Final fallback to the most likely VPS path
+	vpsPath := filepath.Join(home, ".fhish", "rollups", "fhish-1", "docker", "docker-compose.yml")
+	return vpsPath
 }
 
 func runCompose(args ...string) error {
