@@ -23,7 +23,7 @@ func NodeCommand() *cobra.Command {
 			RunE: func(cmd *cobra.Command, args []string) error {
 				cfg, _ := config.GetActiveChain()
 				m := service.NewManager("node", cfg.Home)
-				return m.Start("minievm", "start", "--home", cfg.Home)
+				return m.Start("minievm", []string{"start", "--home", cfg.Home}, []string{})
 			},
 		},
 		&cobra.Command{
@@ -43,8 +43,12 @@ func NodeCommand() *cobra.Command {
 				
 				// 1. Check local OS process status
 				m := service.NewManager("node", cfg.Home)
-				procStatus := m.Status()
-				fmt.Printf("Process status: %s\n", procStatus)
+				running, pid, _ := m.Status()
+				if running {
+					fmt.Printf("Process status: running (pid: %d)\n", pid)
+				} else {
+					fmt.Printf("Process status: stopped\n")
+				}
 
 				// 2. Check actual RPC connectivity and chain state
 				if cfg.EVMRPC != "" {

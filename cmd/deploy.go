@@ -22,7 +22,7 @@ func DeployCommand() *cobra.Command {
 			Use:   "contracts",
 			Short: "Deploy all FHE contracts from fhish-contracts-v2",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				cfg, _ := config.GetActiveChain()
+				_, _ = config.GetActiveChain()
 				utils.PrintStep(1, 1, "Deploying FHE contracts...")
 				
 				cwd, _ := os.Getwd()

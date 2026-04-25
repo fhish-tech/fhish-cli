@@ -28,7 +28,7 @@ func GatewayCommand() *cobra.Command {
 				cwd, _ := os.Getwd()
 				gatewayDir := filepath.Join(filepath.Dir(cwd), "fhish-gateway")
 				
-				return m.Start("npm", "--prefix", gatewayDir, "start")
+				return m.Start("npm", []string{"--prefix", gatewayDir, "start"}, []string{})
 			},
 		},
 		&cobra.Command{
@@ -46,7 +46,12 @@ func GatewayCommand() *cobra.Command {
 			Run: func(cmd *cobra.Command, args []string) {
 				cfg, _ := config.GetActiveChain()
 				m := service.NewManager("gateway", cfg.Home)
-				fmt.Printf("Gateway status: %s\n", m.Status())
+				running, pid, _ := m.Status()
+				if running {
+					fmt.Printf("Gateway status: running (pid: %d)\n", pid)
+				} else {
+					fmt.Printf("Gateway status: stopped\n")
+				}
 			},
 		},
 	)

@@ -53,3 +53,7 @@ func Build(targetDir string) error {
 	utils.PrintSuccess("MiniEVM built and installed.")
 	return nil
 }
+func InitNode(homeDir string, chainID string) error {
+	utils.PrintInfo(fmt.Sprintf("Initializing MiniEVM node (chain-id: %s)...", chainID))
+	return utils.RunCommand("minievm", "init", "fhish-node", "--chain-id", chainID, "--home", homeDir)
+}

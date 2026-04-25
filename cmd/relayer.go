@@ -28,7 +28,7 @@ func RelayerCommand() *cobra.Command {
 				cwd, _ := os.Getwd()
 				relayerDir := filepath.Join(filepath.Dir(cwd), "packages", "fhish-relayer-v2")
 				
-				return m.Start("npm", "--prefix", relayerDir, "start")
+				return m.Start("npm", []string{"--prefix", relayerDir, "start"}, []string{})
 			},
 		},
 		&cobra.Command{
@@ -46,7 +46,12 @@ func RelayerCommand() *cobra.Command {
 			Run: func(cmd *cobra.Command, args []string) {
 				cfg, _ := config.GetActiveChain()
 				m := service.NewManager("relayer", cfg.Home)
-				fmt.Printf("Relayer status: %s\n", m.Status())
+				running, pid, _ := m.Status()
+				if running {
+					fmt.Printf("Relayer status: running (pid: %d)\n", pid)
+				} else {
+					fmt.Printf("Relayer status: stopped\n")
+				}
 			},
 		},
 	)
