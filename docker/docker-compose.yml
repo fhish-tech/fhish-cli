@@ -186,6 +186,7 @@ services:
       - ETHEREUM_JSON_RPC_HTTP_URL=http://minievm:8545
       - DATABASE_URL=postgresql://fhish_explorer_user:fhish_explorer_pass@explorer-db:5432/fhish_explorer_db?ssl=false
       - ECTO_USE_SSL=false
+      - SECRET_KEY_BASE=567b4c781d06b952c9d73b000ef26767fd620593f61c6a012011a660199bf50531bd0175d4090ca21460337c57097211a76f010454707351911fa27237ee0644
       - REDIS_URL=redis://explorer-redis:6379/0
       - INDEXER_DISABLE_PENDING_TRANSACTIONS_FETCHER=true
       - INDEXER_DISABLE_REWARD_POST_PROCESSOR=true
