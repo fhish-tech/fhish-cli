@@ -14,8 +14,8 @@ services:
   # 1. MiniEVM Node
   minievm:
     build:
-      context: ../..
-      dockerfile: fhish-cli/docker/Dockerfile.minievm
+      context: ..
+      dockerfile: docker/Dockerfile.minievm
     container_name: fhish-minievm
     restart: unless-stopped
     networks: [fhish]
@@ -41,8 +41,8 @@ services:
   # 2. Contract Deployer
   deployer:
     build:
-      context: ../..
-      dockerfile: fhish-cli/docker/Dockerfile.deployer
+      context: ..
+      dockerfile: docker/Dockerfile.deployer
     container_name: fhish-deployer
     networks: [fhish]
     depends_on:
@@ -60,8 +60,8 @@ services:
   # 3. FHE Gateway
   gateway:
     build:
-      context: ../..
-      dockerfile: fhish-cli/docker/Dockerfile.gateway
+      context: ..
+      dockerfile: docker/Dockerfile.gateway
     container_name: fhish-gateway
     restart: unless-stopped
     networks: [fhish]
@@ -71,7 +71,7 @@ services:
       deployer:
         condition: service_completed_successfully
     volumes:
-      - ../../fhish-gateway/keys-shortint:/app/keys-shortint
+      - gateway-keys:/app/keys-shortint
     environment:
       PORT: 8080
       FHISH_RELAYER_SECRET: ${FHISH_RELAYER_SECRET:-fhish-test-secret}
@@ -86,8 +86,8 @@ services:
   # 4. FHE Relayer
   relayer:
     build:
-      context: ../..
-      dockerfile: fhish-cli/docker/Dockerfile.relayer
+      context: ..
+      dockerfile: docker/Dockerfile.relayer
     container_name: fhish-relayer
     restart: unless-stopped
     networks: [fhish]
@@ -108,8 +108,8 @@ services:
   # 5. FHE Verifier
   verifier:
     build:
-      context: ../..
-      dockerfile: fhish-cli/docker/Dockerfile.verifier
+      context: ..
+      dockerfile: docker/Dockerfile.verifier
     container_name: fhish-verifier
     networks: [fhish]
     depends_on:

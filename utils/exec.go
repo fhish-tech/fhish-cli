@@ -7,8 +7,11 @@ import (
 	"os/exec"
 )
 
-func RunCommand(name string, args ...string) error {
+func RunCommand(name string, args []string, dir string) error {
 	cmd := exec.Command(name, args...)
+	if dir != "" {
+		cmd.Dir = dir
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

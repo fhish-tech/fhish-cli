@@ -38,7 +38,7 @@ func Build(targetDir string) error {
 	if _, err := os.Stat(srcDir); os.IsNotExist(err) {
 		utils.PrintInfo(fmt.Sprintf("Cloning MiniEVM (%s)...", tag))
 		_ = os.MkdirAll(filepath.Dir(srcDir), 0755)
-		err := utils.RunCommand("git", "clone", repoURL, srcDir, "--depth", "1", "--branch", tag)
+		err := utils.RunCommand("git", []string{"clone", repoURL, srcDir, "--depth", "1", "--branch", tag}, "")
 		if err != nil {
 			return err
 		}
@@ -55,5 +55,5 @@ func Build(targetDir string) error {
 }
 func InitNode(homeDir string, chainID string) error {
 	utils.PrintInfo(fmt.Sprintf("Initializing MiniEVM node (chain-id: %s)...", chainID))
-	return utils.RunCommand("minievm", "init", "fhish-node", "--chain-id", chainID, "--home", homeDir)
+	return utils.RunCommand("minievm", []string{"init", "fhish-node", "--chain-id", chainID, "--home", homeDir}, "")
 }

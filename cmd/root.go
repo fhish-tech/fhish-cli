@@ -76,7 +76,7 @@ func VersionCommand() *cobra.Command {
 		Use:   "version",
 		Short: "Print the version number of fhish",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("fhish version v0.1.0-alpha")
+			fmt.Println("fhish version v0.1.8")
 		},
 	}
 }

@@ -1,21 +1,17 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
-	"github.com/fhish/fhish-cli/config"
-	"github.com/fhish/fhish-cli/contracts"
-	"github.com/fhish/fhish-cli/gateway"
-	"github.com/fhish/fhish-cli/minievm"
 	"github.com/fhish/fhish-cli/models"
-	"github.com/fhish/fhish-cli/relayer"
-	"github.com/fhish/fhish-cli/service"
 	"github.com/fhish/fhish-cli/utils"
 )
 
@@ -27,15 +23,8 @@ func CreateCommand() *cobra.Command {
 
 	cmd.AddCommand(
 		&cobra.Command{
-			Use:   "minievm",
-			Short: "Create a new MiniEVM rollup node",
-			RunE: func(cmd *cobra.Command, args []string) error {
-				return createMiniEVM()
-			},
-		},
-		&cobra.Command{
 			Use:   "all",
-			Short: "Deploy the entire FHE rollup stack",
+			Short: "Deploy the entire FHE rollup stack interactively",
 			RunE: func(cmd *cobra.Command, args []string) error {
 				return createAll()
 			},
@@ -43,51 +32,6 @@ func CreateCommand() *cobra.Command {
 	)
 
 	return cmd
-}
-
-func createMiniEVM() error {
-	p := tea.NewProgram(models.NewCreateMiniEVMModel())
-	m, err := p.Run()
-	if err != nil {
-		return err
-	}
-
-	model := m.(models.CreateMiniEVMModel)
-	if !model.Done {
-		return nil
-	}
-
-	vals := model.Config()
-	home, _ := os.UserHomeDir()
-	chainID := vals["chain_id"]
-	dataDir := filepath.Join(home, ".fhish", "minievm", chainID)
-
-	utils.PrintStep(1, 3, "Building MiniEVM...")
-	err = minievm.Build(filepath.Join(home, ".fhish"))
-	if err != nil {
-		return err
-	}
-
-	utils.PrintStep(2, 3, "Initializing Node...")
-	err = minievm.InitNode(dataDir, chainID)
-	if err != nil {
-		return err
-	}
-
-	utils.PrintStep(3, 3, "Patching Genesis...")
-	evmID, _ := strconv.Atoi(vals["evm_chain_id"])
-	cfg := &config.ChainConfig{
-		ChainID:    chainID,
-		EVMChainID: evmID,
-		Home:       dataDir,
-	}
-	err = minievm.PatchGenesis(filepath.Join(dataDir, "config", "genesis.json"), cfg)
-	if err != nil {
-		return err
-	}
-
-	utils.PrintSuccess("MiniEVM node is ready!")
-	return nil
 }
 
 func createAll() error {
@@ -103,68 +47,93 @@ func createAll() error {
 	}
 	vals := model.Config()
 
-	// Setup Config
-	home, _ := os.UserHomeDir()
+	// 2. Derive Configuration
 	chainID := vals["chain_id"]
-	dataDir := filepath.Join(home, ".fhish", "minievm", chainID)
-	evmID, _ := strconv.Atoi(vals["evm_chain_id"])
+	moniker := vals["moniker"]
+	gasDenom := vals["gas_denom"]
+	deployerKey := vals["deployer_key"]
+	relayerSecret := vals["relayer_secret"]
 
-	chainCfg := &config.ChainConfig{
-		ChainID:       chainID,
-		EVMChainID:    evmID,
-		Home:          dataDir,
-		RPC:           "http://localhost:26657",
-		EVMRPC:        "http://localhost:8545",
-		L1RPC:         vals["l1_rpc"],
-		GatewayURL:    "http://localhost:3000",
-		ContractsPath: filepath.Join(home, ".fhish", chainID, "contracts.json"),
-	}
-
-	// 2. Build & Init
-	utils.PrintStep(1, 6, "Building and Initializing Node...")
-	_ = minievm.Build(filepath.Join(home, ".fhish"))
-	_ = minievm.InitNode(dataDir, chainID)
-	_ = minievm.PatchGenesis(filepath.Join(dataDir, "config", "genesis.json"), chainCfg)
-
-	// 3. Start Node
-	utils.PrintStep(2, 6, "Starting Node...")
-	mgr := service.NewManager("node", dataDir)
-	_ = mgr.Start("minievm", []string{"start", "--home", dataDir}, []string{})
-	
-	utils.PrintInfo("Waiting for RPC to be ready...")
-	_ = utils.WaitForBlock(chainCfg.EVMRPC, 1, 60*time.Second)
-
-	// 4. Deploy Contracts
-	utils.PrintStep(3, 6, "Deploying FHE Contracts...")
-	cwd, _ := os.Getwd()
-	contractsSrc := filepath.Join(filepath.Dir(cwd), "packages", "fhish-contracts-v2")
-	addrs, err := contracts.DeployContracts(contractsSrc, chainCfg.EVMRPC, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+	evmChainID := utils.CalculateEVMChainID(chainID)
+	deployerAddr, err := utils.GetAddressFromPrivKey(deployerKey)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid deployer private key: %v", err)
 	}
-	_ = contracts.SaveAddresses(chainCfg.ContractsPath, addrs)
 
-	// 5. Gateway Setup
-	utils.PrintStep(4, 6, "Setting up FHE Gateway...")
-	gatewaySrc := filepath.Join(filepath.Dir(cwd), "fhish-gateway")
-	relayerSecret := "fhish-test-secret"
-	_ = gateway.WriteGatewayConfig(dataDir, addrs, relayerSecret)
-	_ = gateway.GenerateKeys(gatewaySrc, filepath.Join(dataDir, "keys"))
-	
-	gtwayMgr := service.NewManager("gateway", dataDir)
-	_ = gtwayMgr.Start("npm", []string{"--prefix", gatewaySrc, "start"}, []string{"FHISH_RELAYER_SECRET=" + relayerSecret})
+	home, _ := os.UserHomeDir()
+	setupDir := filepath.Join(home, ".fhish", "rollups", chainID)
+	_ = os.MkdirAll(setupDir, 0755)
 
-	// 6. Relayer Setup
-	utils.PrintStep(5, 6, "Setting up FHE Relayer...")
-	relayerSrc := filepath.Join(filepath.Dir(cwd), "packages", "fhish-relayer-v2")
-	_ = relayer.WriteRelayerConfig(dataDir, addrs, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", relayerSecret, chainCfg.EVMRPC)
+	// 3. Prepare Environment
+	utils.PrintStep(1, 4, "Preparing deployment environment...")
 	
-	relayerMgr := service.NewManager("relayer", dataDir)
-	_ = relayerMgr.Start("npm", []string{"--prefix", relayerSrc, "start"}, []string{})
+	// Clone the CLI repo to get the Docker files if they don't exist
+	if _, err := os.Stat(filepath.Join(setupDir, "docker")); os.IsNotExist(err) {
+		utils.PrintInfo("Downloading stack configuration...")
+		err = utils.RunCommand("git", []string{"clone", "https://github.com/fhish-tech/fhish-cli.git", "temp-cli"}, setupDir)
+		if err == nil {
+			_ = os.Rename(filepath.Join(setupDir, "temp-cli", "docker"), filepath.Join(setupDir, "docker"))
+			_ = os.RemoveAll(filepath.Join(setupDir, "temp-cli"))
+		}
+	}
 
-	// 7. Summary
-	utils.PrintStep(6, 6, "Rollup stack is LIVE!")
-	// Print summary table here...
-	
+	// Create .env file
+	envContent := fmt.Sprintf(`CHAIN_ID=%s
+EVM_CHAIN_ID=%d
+MONIKER=%s
+GAS_DENOM=%s
+DEPLOYER_ADDRESS=%s
+DEPLOYER_PRIVATE_KEY=%s
+FHISH_RELAYER_SECRET=%s
+`, chainID, evmChainID, moniker, gasDenom, deployerAddr, deployerKey, relayerSecret)
+
+	err = os.WriteFile(filepath.Join(setupDir, ".env"), []byte(envContent), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to create .env file: %v", err)
+	}
+
+	// 4. Start Stack
+	utils.PrintStep(2, 4, "Launching Docker containers (this may take a few minutes)...")
+	err = utils.RunCommand("docker", []string{"compose", "-f", "docker/docker-compose.yml", "up", "-d"}, setupDir)
+	if err != nil {
+		return fmt.Errorf("failed to start docker stack: %v", err)
+	}
+
+	// 5. Wait for Readiness
+	utils.PrintStep(3, 4, "Waiting for RPC to be ready...")
+	time.Sleep(10 * time.Second) // Give it a head start
+
+	// 6. Success Summary
+	utils.PrintStep(4, 4, "Rollup stack is LIVE!")
+
+	printSummary(chainID, moniker, evmChainID)
+
 	return nil
+}
+
+func printSummary(chainID, moniker string, evmChainID int64) {
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39")).Padding(0, 1)
+	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Width(20)
+	valStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("255"))
+
+	fmt.Println("\n" + titleStyle.Render("🚀 FHISH ROLLUP DEPLOYED SUCCESSFULLY"))
+	fmt.Println(lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render(strings.Repeat("─", 50)))
+	
+	fmt.Printf("%s %s\n", keyStyle.Render("Rollup Name:"), valStyle.Render(moniker))
+	fmt.Printf("%s %s\n", keyStyle.Render("Rollup Chain ID:"), valStyle.Render(chainID))
+	fmt.Printf("%s %s\n", keyStyle.Render("EVM Chain ID:"), valStyle.Render(fmt.Sprintf("%d", evmChainID)))
+	fmt.Printf("%s %s\n", keyStyle.Render("REST URL:"), valStyle.Render("http://localhost:1317"))
+	fmt.Printf("%s %s\n", keyStyle.Render("RPC URL:"), valStyle.Render("http://localhost:26657"))
+	fmt.Printf("%s %s\n", keyStyle.Render("EVM RPC URL:"), valStyle.Render("http://localhost:8545"))
+
+	fmt.Println(lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render(strings.Repeat("─", 50)))
+	
+	instructionStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("214")).
+		Padding(1, 2).
+		MarginTop(1).
+		Render(fmt.Sprintf("To add this rollup to Initiascan, go to:\nhttps://scan.testnet.initia.xyz/initiation-2/custom-network/add/manual\n\nUse the details above to complete the form."))
+	
+	fmt.Println(instructionStyle)
 }

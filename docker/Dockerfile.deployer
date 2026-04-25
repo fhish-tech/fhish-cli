@@ -10,12 +10,13 @@ COPY --from=foundry /usr/local/bin/cast /usr/local/bin/cast
 COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/anvil
 
 WORKDIR /contracts
-COPY packages/fhish-contracts-v2/ .
+RUN git clone https://github.com/fhish-tech/fhish-contracts-v2.git /contracts-src && \
+    cp -r /contracts-src/* ./
 
 # Install npm deps if needed
 RUN if [ -f "package.json" ]; then npm install --no-audit --no-fund --legacy-peer-deps; fi
 
-COPY fhish-cli/docker/scripts/deploy-contracts.sh /deploy-contracts.sh
+COPY docker/scripts/deploy-contracts.sh /deploy-contracts.sh
 RUN chmod +x /deploy-contracts.sh
 
 ENTRYPOINT ["/deploy-contracts.sh"]

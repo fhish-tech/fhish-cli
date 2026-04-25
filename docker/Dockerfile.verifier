@@ -2,15 +2,17 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy WASM package
-COPY packages/fhish-wasm/pkg-node /packages/fhish-wasm/pkg-node
+RUN apk add --no-cache git
+
+# Clone wasm
+RUN git clone https://github.com/fhish-tech/fhish-wasm.git /packages/fhish-wasm
 
 # Install ethers and node-fetch (if needed)
 RUN npm init -y && \
     npm install ethers@6
 
-COPY fhish-cli/docker/scripts/verify-fhe.js /app/verify-fhe.js
-COPY fhish-cli/docker/scripts/ct_yes.bin /app/ct_yes.bin
-COPY fhish-cli/docker/scripts/ct_no.bin /app/ct_no.bin
+COPY docker/scripts/verify-fhe.js /app/verify-fhe.js
+COPY docker/scripts/ct_yes.bin /app/ct_yes.bin
+COPY docker/scripts/ct_no.bin /app/ct_no.bin
 
 ENTRYPOINT ["node", "/app/verify-fhe.js"]

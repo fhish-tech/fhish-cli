@@ -1,20 +1,22 @@
 # fhish-cli/docker/Dockerfile.relayer
 FROM node:20-alpine AS builder
 
-WORKDIR /app
-# Copy from workspace context
-COPY packages/fhish-relayer-v2/package*.json ./
-RUN npm install --no-audit --no-fund --legacy-peer-deps
+RUN apk add --no-cache git
 
-COPY packages/fhish-relayer-v2/ ./
-# Build if TypeScript
-RUN if [ -f "tsconfig.json" ]; then npx tsc; fi
+# Clone relayer
+RUN git clone https://github.com/fhish-tech/fhish-relayer-v2.git /app-src
+
+# Copy source
+WORKDIR /app
+RUN cp -r /app-src/* ./ && \
+    npm install --no-audit --no-fund --legacy-peer-deps && \
+    if [ -f "tsconfig.json" ]; then npx tsc; fi
 
 FROM node:20-alpine
 RUN apk add --no-cache jq bash
 WORKDIR /app
 COPY --from=builder /app /app
-COPY fhish-cli/docker/scripts/start-relayer.sh /start-relayer.sh
+COPY docker/scripts/start-relayer.sh /start-relayer.sh
 RUN chmod +x /start-relayer.sh
 
 ENTRYPOINT ["/start-relayer.sh"]

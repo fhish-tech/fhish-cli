@@ -3,18 +3,17 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy WASM package first (it's a dependency)
-COPY packages/fhish-wasm/pkg-node /packages/fhish-wasm/pkg-node
+RUN apt-get update && apt-get install -y git
 
-# Copy gateway source
-COPY fhish-gateway/package*.json ./
-RUN npm install --no-audit --no-fund --legacy-peer-deps
+# Clone dependencies
+RUN git clone https://github.com/fhish-tech/fhish-wasm.git /packages/fhish-wasm && \
+    git clone https://github.com/fhish-tech/fhish-gateway.git /app-src
 
-COPY fhish-gateway/tsconfig.json ./
-COPY fhish-gateway/src ./src
-COPY fhish-gateway/scripts ./scripts
-
-RUN npm run build || echo "Build step skipped"
+# Copy gateway source from cloned repo
+WORKDIR /app
+RUN cp -r /app-src/* ./ && \
+    npm install --no-audit --no-fund --legacy-peer-deps && \
+    npm run build || echo "Build step skipped"
 
 FROM node:20-alpine
 WORKDIR /app

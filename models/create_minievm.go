@@ -10,10 +10,10 @@ type Step int
 
 const (
 	StepChainID Step = iota
-	StepEVMChainID
 	StepMoniker
 	StepGasDenom
-	StepL1RPC
+	StepDeployerKey
+	StepRelayerSecret
 	StepConfirm
 )
 
@@ -29,30 +29,34 @@ func NewCreateMiniEVMModel() CreateMiniEVMModel {
 	inputs := make(map[Step]*textinput.Model)
 	
 	t1 := textinput.New()
-	t1.Placeholder = "Chain ID (fhish-1)"
+	t1.Placeholder = "Chain ID (e.g. fhish-1)"
 	t1.SetValue("fhish-1")
 	t1.Focus()
 	inputs[StepChainID] = &t1
 
 	t2 := textinput.New()
-	t2.Placeholder = "EVM Chain ID (1234)"
-	t2.SetValue("1234")
-	inputs[StepEVMChainID] = &t2
+	t2.Placeholder = "Node Moniker (e.g. fhish-node)"
+	t2.SetValue("fhish-node")
+	inputs[StepMoniker] = &t2
 
 	t3 := textinput.New()
-	t3.Placeholder = "Moniker (fhish-node)"
-	t3.SetValue("fhish-node")
-	inputs[StepMoniker] = &t3
+	t3.Placeholder = "Gas Denom (uinit)"
+	t3.SetValue("uinit")
+	inputs[StepGasDenom] = &t3
 
 	t4 := textinput.New()
-	t4.Placeholder = "Gas Denom (uinit)"
-	t4.SetValue("uinit")
-	inputs[StepGasDenom] = &t4
+	t4.Placeholder = "Deployer Private Key (0x...)"
+	t4.EchoMode = textinput.EchoPassword
+	t4.EchoCharacter = '•'
+	t4.SetValue("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+	inputs[StepDeployerKey] = &t4
 
 	t5 := textinput.New()
-	t5.Placeholder = "L1 RPC (https://rpc.testnet.initia.xyz)"
-	t5.SetValue("https://rpc.testnet.initia.xyz")
-	inputs[StepL1RPC] = &t5
+	t5.Placeholder = "FHE Relayer Secret"
+	t5.EchoMode = textinput.EchoPassword
+	t5.EchoCharacter = '•'
+	t5.SetValue("fhish-test-secret")
+	inputs[StepRelayerSecret] = &t5
 
 	return CreateMiniEVMModel{
 		step:    StepChainID,
@@ -85,14 +89,14 @@ func (m CreateMiniEVMModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.history = append(m.history, m.step)
 			m.step++
-			if m.step <= StepL1RPC {
+			if m.step <= StepRelayerSecret {
 				m.inputs[m.step].Focus()
 			}
 			return m, nil
 		}
 	}
 
-	if m.step <= StepL1RPC {
+	if m.step <= StepRelayerSecret {
 		var cmd tea.Cmd
 		input := *m.inputs[m.step]
 		newModel, cmd := input.Update(msg)
@@ -105,28 +109,33 @@ func (m CreateMiniEVMModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m CreateMiniEVMModel) View() string {
 	if m.Done {
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("✔ Configuration complete! Building...")
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Bold(true).Render("\n✔ Configuration complete! Initializing Fhish Stack...")
 	}
 
-	header := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5")).Render("Fhish MiniEVM Setup Wizard")
+	header := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("39")).
+		Border(lipgloss.RoundedBorder()).
+		Padding(0, 1).
+		Render("Fhish Rollup Setup Wizard")
 	
 	var body string
 	switch m.step {
 	case StepChainID:
-		body = "Enter Chain ID:\n" + m.inputs[StepChainID].View()
-	case StepEVMChainID:
-		body = "Enter EVM Chain ID:\n" + m.inputs[StepEVMChainID].View()
+		body = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Render("Chain ID") + "\n" + m.inputs[StepChainID].View()
 	case StepMoniker:
-		body = "Enter Node Moniker:\n" + m.inputs[StepMoniker].View()
+		body = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Render("Node Moniker") + "\n" + m.inputs[StepMoniker].View()
 	case StepGasDenom:
-		body = "Enter Gas Denom:\n" + m.inputs[StepGasDenom].View()
-	case StepL1RPC:
-		body = "Enter L1 RPC URL:\n" + m.inputs[StepL1RPC].View()
+		body = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Render("Gas Denom") + "\n" + m.inputs[StepGasDenom].View()
+	case StepDeployerKey:
+		body = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Render("Deployer Private Key (EVM)") + "\n" + m.inputs[StepDeployerKey].View()
+	case StepRelayerSecret:
+		body = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Render("FHE Relayer Secret") + "\n" + m.inputs[StepRelayerSecret].View()
 	case StepConfirm:
-		body = "Confirm configuration and start deployment? (Press Enter)"
+		body = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214")).Render("Ready to launch? (Press Enter to start deployment)")
 	}
 
-	help := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render("\n\n(enter: next • ctrl+z: back • ctrl+c: quit)")
+	help := lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("\n\n(enter: next • ctrl+z: back • ctrl+c: quit)")
 	
 	return header + "\n\n" + body + help
 }
@@ -134,9 +143,9 @@ func (m CreateMiniEVMModel) View() string {
 func (m CreateMiniEVMModel) Config() map[string]string {
 	res := make(map[string]string)
 	res["chain_id"] = m.inputs[StepChainID].Value()
-	res["evm_chain_id"] = m.inputs[StepEVMChainID].Value()
 	res["moniker"] = m.inputs[StepMoniker].Value()
 	res["gas_denom"] = m.inputs[StepGasDenom].Value()
-	res["l1_rpc"] = m.inputs[StepL1RPC].Value()
+	res["deployer_key"] = m.inputs[StepDeployerKey].Value()
+	res["relayer_secret"] = m.inputs[StepRelayerSecret].Value()
 	return res
 }
