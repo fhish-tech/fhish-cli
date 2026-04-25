@@ -168,6 +168,7 @@ services:
     image: blockscout/blockscout:6.9.0
     container_name: fhish-explorer
     restart: always
+    user: root
     command: ["/bin/sh", "-c", "bin/blockscout start"]
     depends_on:
       explorer-db:
@@ -191,7 +192,9 @@ services:
       - INDEXER_DISABLE_PENDING_TRANSACTIONS_FETCHER=true
       - INDEXER_DISABLE_REWARD_POST_PROCESSOR=true
       - INDEXER_DISABLE_INTERNAL_TRANSACTIONS_FETCHER=true
-      - INDEXER_OPTIMIZATION_CONCURRENT_REQUESTS=2
+      - INDEXER_DISABLE_BLOCK_REWARD_FETCHER=true
+      - INDEXER_DISABLE_OMNIBUS=true
+      - INDEXER_OPTIMIZATION_CONCURRENT_REQUESTS=1
       - MICROSERVICES_SC_VERIFIER_ENABLED=false
       - CHAIN_ID=1261826453
       - SHOW_PRICE_CHART=false
