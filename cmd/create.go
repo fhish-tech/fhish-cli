@@ -122,6 +122,10 @@ FHISH_RELAYER_SECRET=%s
 
 	// 4. Start Stack
 	utils.PrintStep(2, 4, "Launching Docker containers (this may take a few minutes)...")
+	
+	// Ensure a clean state by stopping any existing containers and wiping stale volumes for this specific stack
+	_ = utils.RunCommand("docker", []string{"compose", "-f", "docker/docker-compose.yml", "down", "-v", "--remove-orphans"}, setupDir)
+
 	err = utils.RunCommand("docker", []string{"compose", "-f", "docker/docker-compose.yml", "up", "-d"}, setupDir)
 	if err != nil {
 		return fmt.Errorf("failed to start docker stack: %v", err)
