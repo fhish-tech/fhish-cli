@@ -150,5 +150,5 @@ services:
     ports:
       - "4000:4000"
     environment:
-      - NEXT_PUBLIC_RPC_URL=http://minievm:8545
+      - NEXT_PUBLIC_RPC_URL=http://161.35.63.119:8545
     profiles: ["explorer"]
