@@ -76,6 +76,7 @@ services:
       DB_AUTO_MIGRATE: "true"
       CHAIN_ID: ${CHAIN_ID:-fhish-1}
       VM_TYPE: evm
+      EVMS_ENABLED: "true"
       RPC_URL: http://minievm:26657
       REST_URL: http://minievm:1317
       JSON_RPC_URL: http://minievm:8545
@@ -95,6 +96,7 @@ services:
       DB_AUTO_MIGRATE: "true"
       CHAIN_ID: ${CHAIN_ID:-fhish-1}
       VM_TYPE: evm
+      EVMS_ENABLED: "true"
       RPC_URL: http://minievm:26657
       REST_URL: http://minievm:1317
       JSON_RPC_URL: http://minievm:8545
