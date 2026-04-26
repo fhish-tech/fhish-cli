@@ -60,7 +60,7 @@ services:
 
   # 3. Rollytics Indexer
   rollytics-indexer:
-    image: ghcr.io/initia-labs/rollytics:v0.19.0
+    image: ghcr.io/initia-labs/rollytics:latest
     container_name: fhish-rollytics-indexer
     command: ["indexer"]
     restart: unless-stopped
@@ -80,7 +80,7 @@ services:
 
   # 4. Rollytics API
   rollytics-api:
-    image: ghcr.io/initia-labs/rollytics:v0.19.0
+    image: ghcr.io/initia-labs/rollytics:latest
     container_name: fhish-rollytics-api
     command: ["api"]
     restart: unless-stopped
