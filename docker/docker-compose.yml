@@ -72,6 +72,7 @@ services:
         condition: service_healthy
     environment:
       DB_DSN: postgres://postgres:postgres@rollytics-db:5432/rollytics?sslmode=disable
+      DB_AUTO_MIGRATE: "true"
       CHAIN_ID: ${CHAIN_ID:-fhish-1}
       VM_TYPE: evm
       RPC_URL: http://minievm:26657
@@ -90,6 +91,7 @@ services:
         condition: service_healthy
     environment:
       DB_DSN: postgres://postgres:postgres@rollytics-db:5432/rollytics?sslmode=disable
+      DB_AUTO_MIGRATE: "true"
       CHAIN_ID: ${CHAIN_ID:-fhish-1}
       VM_TYPE: evm
       RPC_URL: http://minievm:26657
