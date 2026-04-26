@@ -56,6 +56,8 @@ minievm start --home "$HOME_DIR" \
     --rpc.laddr tcp://0.0.0.0:26657 \
     --api.enable true \
     --api.enabled-unsafe-cors true \
+    --api.address "tcp://0.0.0.0:1317" \
+    --indexer.enable true \
     --json-rpc.address 0.0.0.0:8545 \
     --json-rpc.enable true \
     --json-rpc.enable-unsafe-cors true &
